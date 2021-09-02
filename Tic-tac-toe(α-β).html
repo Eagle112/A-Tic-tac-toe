@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>Document</title>
+	<style type="text/css">
+		td{
+			text-align: center;
+			width: 50px;
+			height: 50px;
+			font-size: 26px;
+		}
+	</style>
+</head>
+<body>
+<div style="text-align: center;">
+<div style="position:absolute;left: 24%;width: 12%;">
+	<h3>说明</h3>
+	<p>玩家:X</p>
+	<p>电脑:O</p>
+</div>
+	<table border="1"  style="border-collapse:collapse;margin: 0 auto 20px; ">
+		<tr>
+			<td id="td1"></td>
+			<td></td>
+			<td></td>
+		</tr>
+		<tr>
+			<td></td>
+			<td></td>
+			<td></td>
+		</tr>
+		<tr>
+			<td></td>
+			<td></td>
+			<td></td>
+		</tr>
+	</table>
+	<div style="margin-bottom: 5px">难度:<input type="text" id="deep" style="width: 60px" value="2"></div>
+	<button id="start">重新开始</button>
+	</div>
+	
+</body>
+<script type="text/javascript" src='jquery-1.11.1.js'></script>
+<script type="text/javascript">
+		var MAX = 100;
+		var DRAW = 1;
+		var MIN = -100;
+		var cmpBestMove;
+	$(function() {
+		var isPlayerNow = true;
+		var $tdArr = $("td");
+		$tdArr.click(function(event) {//玩家下棋
+			if(isPlayerNow && !$(this).html()){
+				$(this).html('X');
+				isPlayerNow = false;
+				findCmpMove(MIN,MAX,$("#deep").val(),true);
+			    $("td").eq(cmpBestMove).html("O");
+			   
+			    isPlayerNow = true;
+			    if(gameAnalysis()==MAX){
+			    	alert('你赢了')
+			    }else if(gameAnalysis()==MIN){
+			    	alert('你输了');
+			    }else if(gameAnalysis()==DRAW && isBoardFull()){
+			    	alert("平局");
+			    }
+			}
+		    
+		});
+		$("#start").click(function(event) {
+			$("td").html("");
+		});
+	});
+	function findCmpMove(alpha,maxborder,dept,isRootNode){
+		var isFirstChild = true;
+		var beta= maxborder;
+		if(dept == 0||isBoardFull()){//如果棋盘为满或者到达指定深度则计算估价值
+			return gameAnalysis();
+		}else if(gameAnalysis()==MAX){//如果玩家已获胜 则不需要继续搜索
+			return MAX;
+		}
+		for(var i = 0; i<9 && beta>alpha ; i++){
+			if(!$("td").eq(i).html()){
+				$("td").eq(i).html("O");
+				var response = findPlayerMove(alpha, beta, dept-1);//展开子节点，并返回其倒推值
+				$("td").eq(i).html("");
+				if(isFirstChild){
+					beta = response;
+					isFirstChild = false;
+					if (isRootNode) {
+						cmpBestMove = i;
+					}
+				}else if(response < beta){//子节点的推倒值小于beta值 更新Min节点的beta值
+					beta = response;
+					if(isRootNode){
+						cmpBestMove = i;
+					}
+				}
+			}
+		}
+		return beta;
+	}
+	function findPlayerMove(minborder, beta, dept){
+		var isFirstChild = true;
+		var alpha= minborder ;
+		if(dept == 0||isBoardFull()){
+			return gameAnalysis();
+		}
+		else if(gameAnalysis()==MIN)//如果电脑已获胜 则不需要继续搜索
+			return MIN;
+		for(var i = 0; i<9 && alpha < beta ; i++){
+			if(!$("td").eq(i).html()){
+				$("td").eq(i).html("X");
+				var response = findCmpMove(alpha, beta, dept-1,false);//展开子节点，并返回其倒推值
+				$("td").eq(i).html("");
+				if(isFirstChild){
+					alpha = response;
+					isFirstChild = false;
+				}else if(response > alpha){
+					alpha = response;
+				}
+			}
+
+		}
+		return alpha;
+	}
+	function gameAnalysis(){//分析棋盘局势
+		var state = "UNDETERMINED";
+		if(isALine($("td").eq(0),$("td").eq(1),$("td").eq(2))||isALine($("td").eq(0),$("td").eq(4),$("td").eq(8))||isALine($("td").eq(0),$("td").eq(3),$("td").eq(6))){
+			state = $("td").eq(0).html();
+		}
+		else if(isALine($("td").eq(1),$("td").eq(4),$("td").eq(7))){
+			state = $("td").eq(1).html();
+		}
+		else if(isALine($("td").eq(2),$("td").eq(4),$("td").eq(6))||isALine($("td").eq(2),$("td").eq(5),$("td").eq(8))){
+			state = $("td").eq(2).html();
+		}
+		else if(isALine($("td").eq(3),$("td").eq(4),$("td").eq(5))){
+			state = $("td").eq(3).html();
+		}
+		else if(isALine($("td").eq(6),$("td").eq(7),$("td").eq(8))){
+			state = $("td").eq(6).html();
+		}
+		if(state == "X"){
+			return MAX;
+		}
+		else if(state == "O"){
+			return MIN;
+		}
+		else if(state == "UNDETERMINED"){
+			if(isBoardFull()){
+				return DRAW;
+			}
+			else{
+				return caculate("X")-caculate("O");
+			}
+		}
+
+	}
+	//将空位置为char后计算三子一线的数目
+	function caculate(char){
+		var Line = 0;
+		var blankList = new Array();
+		var winBoard = new Array([0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]);
+		for (var i = 0; i < 9; i++) {
+			if(!$("td").eq(i).html()){
+				blankList.push(i);
+				$("td").eq(i).html(char);
+			}
+		}
+		for(x in winBoard){
+			if($("td").eq(winBoard[x][0]).html() == char&& $("td").eq(winBoard[x][1]).html()==char && $("td").eq(winBoard[x][2]).html()==char){
+				Line++;
+			}
+		}
+
+		for(var i= 0;i<blankList.length;i++){ //将棋盘还原
+			$("td").eq(blankList[i]).html("");
+		}
+		return Line;
+	}
+	function isBoardFull(){
+		var flag = true;
+		$("td").each(function(index, el) {
+			if(!$(el).html()){
+				flag = false;
+			}
+		});
+		return flag;
+	}
+	function isALine(td1,td2,td3){
+		if(td1.html()&&td2.html()&&td3.html()&&td1.html()==td2.html()&&td2.html()==td3.html())
+			return true;
+		else
+			return false;
+	}
+</script>
+</html>
